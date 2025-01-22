@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Docker
+*.tar
+
+# Misc
+.env
+azure-terraform-project/~$azure deploy.pptx
+~$azure deploy.pptx
