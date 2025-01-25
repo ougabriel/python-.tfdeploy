@@ -8,5 +8,24 @@ __pycache__/
 
 # Misc
 .env
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Crash log files
+crash.log
+
+# Ignore override files (used for local changes, not committed)
+*.tfvars
+*.tfvars.json
+
+# Ignore plan output files
+*.tfplan
+*.tfplan.*
+
+
 azure-terraform-project/~$azure deploy.pptx
 ~$azure deploy.pptx
