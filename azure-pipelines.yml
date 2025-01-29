@@ -1,0 +1,76 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main  # Change this to your main branch if named differently
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Name of the Azure Container Registry (without .azurecr.io)
+  acrName: 'devopsACR92338'  # Replace with your ACR name
+  # Name of the Docker image
+  imageName: 'myapp'  # Change as needed
+
+stages:
+  - stage: Build
+    displayName: Build and Push Docker Image
+    jobs:
+      - job: Build
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: 'Build and Push Docker Image to ACR'
+            inputs:
+              azureSubscription: 'devopsProject'  # Use the exact name of your service connection
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set variables
+                imageTag=$(Build.BuildId)
+
+                echo "Logging into Azure Container Registry..."
+                az acr login --name $acrName
+
+                echo "Building Docker image..."
+                docker build -t $acrName.azurecr.io/$imageName:$imageTag .
+
+                echo "Pushing Docker image to ACR..."
+                docker push $acrName.azurecr.io/$imageName:$imageTag
+
+                # Optionally tag the image as 'latest' and push
+                echo "Tagging Docker image as 'latest'..."
+                docker tag $acrName.azurecr.io/$imageName:$imageTag $acrName.azurecr.io/$imageName:latest
+                docker push $acrName.azurecr.io/$imageName:latest
+
+                echo "Docker image pushed to ACR successfully."
+  - stage: Deploy
+    displayName: Deploy Application
+    dependsOn: Build
+    jobs:
+      - job: Deploy
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: 'Update Kubernetes Manifests'
+            inputs:
+              azureSubscription: 'devopsProject'  # Use the exact name of your service connection
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set variables
+                imageTag=$(Build.BuildId)
+                manifestPath="pythonProject/kubernetes"  # Path to your Kubernetes manifests
+
+                echo "Updating image tag in Kubernetes manifests..."
+                sed -i "s|image: $acrName.azurecr.io/$imageName:.*|image: $acrName.azurecr.io/$imageName:$imageTag|g" $manifestPath/deployment.yaml
+
+                echo "Applying Kubernetes manifests..."
+                kubectl apply -f $manifestPath/deployment.yaml
+                kubectl apply -f $manifestPath/service.yaml
+
+                echo "Application deployed successfully."
